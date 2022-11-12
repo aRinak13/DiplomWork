@@ -27,7 +27,7 @@ public class DataHelper {
 
     public static String getNumberByStatus(String status) {
         if (status.equalsIgnoreCase("APPROVED")) {
-            return "444444444444444";
+            return "4444 4444 4444 4444";
         }
         return null;
     }

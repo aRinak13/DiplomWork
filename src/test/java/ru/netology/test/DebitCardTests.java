@@ -234,7 +234,6 @@ public class DebitCardTests {
         tripForm.assertMonthFieldIsEmptyValue();
     }
 
-    @Story("Пустое поле год")
     @Severity(SeverityLevel.NORMAL)
     @Test
     public void shouldVisibleNotificationWithEmptyYear() {
