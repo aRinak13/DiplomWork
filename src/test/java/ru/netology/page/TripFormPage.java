@@ -116,11 +116,6 @@ public class TripFormPage {
         holderLabel.$x(".//span[@class='input__sub']").should(Condition.visible, Condition.text("Поле обязательно для заполнения"));
     }
 
-    public void assertHolderFieldIsInvalidValue() {
-        holderLabel.should(Condition.cssClass("input_invalid"), Condition.cssClass("input_has-value"));
-        holderLabel.$x(".//span[@class='input__sub']").should(Condition.visible, Condition.text("Неверный формат"));
-    }
-
     public void assertCvcFieldIsEmptyValue() {
         cvcLabel.should(Condition.cssClass("input_invalid")).shouldNot(Condition.cssClass("input_has-value"));
         cvcLabel.$x(".//span[@class='input__sub']").should(Condition.visible, Condition.text("Поле обязательно для заполнения"));

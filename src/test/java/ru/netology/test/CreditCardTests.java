@@ -1,8 +1,13 @@
 package ru.netology.test;
 
 import com.codeborne.selenide.logevents.SelenideLogger;
+import com.google.gson.Gson;
 import io.qameta.allure.*;
 import io.qameta.allure.selenide.AllureSelenide;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import org.testng.annotations.*;
 import ru.netology.help.DataHelper;
 import ru.netology.help.DbHelper;
@@ -12,6 +17,7 @@ import ru.netology.page.TripFormPage;
 import java.util.List;
 
 import static com.codeborne.selenide.Selenide.open;
+import static io.restassured.RestAssured.given;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
 
@@ -22,6 +28,10 @@ public class CreditCardTests {
     private static List<DbHelper.PaymentEntity> payments;
     private static List<DbHelper.CreditRequestEntity> credits;
     private static List<DbHelper.OrderEntity> orders;
+    private static final Gson gson = new Gson();
+    private static final RequestSpecification spec = new RequestSpecBuilder().setBaseUri("http://localhost").setPort(9999)
+            .setAccept(ContentType.JSON).setContentType(ContentType.JSON).log(LogDetail.ALL).build();
+    private static final String creditUrl = "/credit";
 
     @BeforeClass
     public void setupClass() {
@@ -430,5 +440,132 @@ public class CreditCardTests {
         tripForm.insertingValueInForm(cardData.getNumber(), cardData.getMonth(), cardData.getYear(), cardData.getHolder(), cvc);
         tripForm.matchesByInsertValue(cardData.getNumber(), cardData.getMonth(), cardData.getYear(), cardData.getHolder(), matchesCvc);
         tripForm.assertCvcFieldIsEmptyValue();
+    }
+
+    @Severity(SeverityLevel.BLOCKER)
+    @Test
+    public void shouldHappyPathStatus200() {
+        cardData = DataHelper.getValidApprovedCard();
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(200);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(1, credits.size());
+        assertEquals(1, orders.size());
+
+        assertTrue(credits.get(0).getStatus().equalsIgnoreCase("approved"));
+        assertEquals(credits.get(0).getBank_id(), orders.get(0).getPayment_id());
+        assertEquals(credits.get(0).getId(), orders.get(0).getCredit_id());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyBody() {
+        cardData = DataHelper.getValidApprovedCard();
+        given().spec(spec)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyNumber() {
+        cardData = new DataHelper.CardData(null, DataHelper.generateMonth(1), DataHelper.generateYear(2),
+                DataHelper.generateValidHolder(), DataHelper.generateValidCVC());
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyMonth() {
+        cardData = new DataHelper.CardData(DataHelper.getNumberByStatus("approved"), null, DataHelper.generateYear(2),
+                DataHelper.generateValidHolder(), DataHelper.generateValidCVC());
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyYear() {
+        cardData = new DataHelper.CardData(DataHelper.getNumberByStatus("approved"), DataHelper.generateMonth(1), null,
+                DataHelper.generateValidHolder(), DataHelper.generateValidCVC());
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyHolder() {
+        cardData = new DataHelper.CardData(DataHelper.getNumberByStatus("approved"), DataHelper.generateMonth(1),
+                DataHelper.generateYear(2), null, DataHelper.generateValidCVC());
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
+    }
+
+    @Severity(SeverityLevel.NORMAL)
+    @Test
+    public void shouldStatus400WithEmptyCvc() {
+        cardData = new DataHelper.CardData(DataHelper.getNumberByStatus("approved"), DataHelper.generateMonth(1),
+                DataHelper.generateYear(2), DataHelper.generateValidHolder(), null);
+        var body = gson.toJson(cardData);
+        given().spec(spec).body(body)
+                .when().post(creditUrl)
+                .then().statusCode(400);
+
+        payments = DbHelper.getPayments();
+        credits = DbHelper.getCreditsRequest();
+        orders = DbHelper.getOrders();
+        assertEquals(0, payments.size());
+        assertEquals(0, credits.size());
+        assertEquals(0, orders.size());
     }
 }
